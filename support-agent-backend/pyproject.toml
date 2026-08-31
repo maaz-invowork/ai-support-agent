@@ -1,0 +1,37 @@
+[project]
+name = "support-agent-backend"
+version = "0.1.0"
+description = "AI Customer Support API"
+readme = "README.md"
+authors = [
+    { name = "maaz-invowork", email = "maaz.khan@invowork.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "asyncpg>=0.29.0",
+    "bcrypt==4.0.1",
+    "fastapi>=0.111.0",
+    "langchain-community>=0.2.4",
+    "langchain-google-genai>=4.3.7",
+    "langchain-openai>=0.1.8",
+    "langgraph>=0.1.5",
+    "langgraph-checkpoint-postgres>=3.1.2",
+    "pgvector>=0.2.5",
+    "psycopg-pool>=3.3.1",
+    "psycopg[binary]>=3.3.4",
+    "pydantic-settings>=2.3.4",
+    "pydantic[email]>=2.13.5",
+    "pyjwt>=2.8.0",
+    "python-dotenv>=1.2.3",
+    "redis>=5.0.4",
+    "sqlalchemy[asyncio]>=2.0.31",
+    "uvicorn[standard]>=0.30.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.2,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "src"
+module-root = ""
