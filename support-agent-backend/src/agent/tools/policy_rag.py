@@ -23,7 +23,6 @@ def _get_embeddings_model():
 
 
 async def _initialize_embeddings_from_db():
-    """Loads policies from PostgreSQL DB and computes embeddings cache."""
     global _EMBEDDINGS_CACHE, _CACHED_DOCS
 
     async with AsyncSessionLocal() as session:

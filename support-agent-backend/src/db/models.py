@@ -26,6 +26,7 @@ class Order(Base):
     total_amount = Column(Float, nullable=False)
     status_description = Column(Text, nullable=True)
     shipping_address = Column(Text, nullable=True)
+    cancellation_reason = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     owner = relationship("User", back_populates="orders")

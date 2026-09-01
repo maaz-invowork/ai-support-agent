@@ -19,6 +19,7 @@ from agent.graph import agent_graph, pool, checkpointer
 from core.security import create_access_token, decode_access_token, get_password_hash, verify_password
 from db.database import get_db, init_db
 from db.models import User
+from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,9 +33,21 @@ async def lifespan(app: FastAPI):
     await pool.close()
 
 app = FastAPI(title="AI Customer Support Agent", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows GET, POST, OPTIONS, etc.
+    allow_headers=["*"],  # Allows Authorization, Content-Type, etc.
+)
+
 security = HTTPBearer()
 
-@app.get("/")
+@app.get("/api/health", status_code=status.HTTP_200_OK)
 async def root():
     return {
         "message": "Welcome to the AI Customer Support API",
@@ -116,13 +129,21 @@ async def get_me(current_user: User = Depends(get_current_user)):
 async def chat_endpoint(request: ChatRequest):
     inputs = {"messages": [HumanMessage(content=request.message)]}
     
-    # Config ensures LangGraph stores/retrieves history for this thread
     config = {"configurable": {"thread_id": request.thread_id or "default_session"}}
     
     result = await agent_graph.ainvoke(inputs, config=config)
     
-    final_message = result["messages"][-1].content
+    raw_content = result["messages"][-1].content
+    
+    if isinstance(raw_content, list):
+        final_message = "".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in raw_content
+        )
+    else:
+        final_message = str(raw_content)
+
     return ChatResponse(
-        response=str(final_message),
+        response=final_message,
         thread_id=request.thread_id or "default_session"
     )

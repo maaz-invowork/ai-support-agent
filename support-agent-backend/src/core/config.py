@@ -5,9 +5,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "AI Support Agent API"
-    SECRET_KEY: str = "SUPER_SECRET_JWT_KEY"
-    GOOGLE_API_KEY: str
     GOOGLE_MODEL: str = "gemini-3.6-flash"
+    SECRET_KEY: str
+    GOOGLE_API_KEY: str
     DATABASE_URL: str
     POSTGRES_CHECKPOINT_URL: str
 

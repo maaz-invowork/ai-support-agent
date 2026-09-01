@@ -12,7 +12,7 @@ INITIAL_POLICIES = [
     {
         "title": "Shipping Policy",
         "category": "shipping",
-        "content": "Standard shipping takes 3-5 business days within the continental US. Express shipping takes 1-2 business days. Free standard shipping applies to orders over $50. International shipping times range from 7-14 business days depending on customs."
+        "content": "Standard shipping takes 2-3 business days within the with same city and 6-7 days out of city. Express shipping takes 1-2 business days. Free standard shipping applies to orders over Rs. 2000. International shipping times range from 12-20 business days depending on customs."
     },
     {
         "title": "Cancellation Policy",
@@ -31,11 +31,11 @@ INITIAL_ORDERS = [
         "id": "ORD-1001",
         "status": "Processing",
         "item_name": "polo blue shirt",
-        "tracking_number": "TRK987654123",
+        "tracking_number": None,
         "total_amount": 129.99,
         "status_description": "Order received and being prepared in warehouse.",
-        "shipping_address": "54 Gulberg, Lahore."
-
+        "shipping_address": "54 Gulberg, Lahore.",
+        "cancellation_reason": None,
     },
     {
         "id": "ORD-1002",
@@ -44,7 +44,8 @@ INITIAL_ORDERS = [
         "tracking_number": "TRK987654124",
         "total_amount": 49.50,
         "status_description": "Package handed over to carrier.",
-        "shipping_address": "98 Eden Park, Sailkot."
+        "shipping_address": "98 nokami near Beharwala Bazar, Sialkot.",
+        "cancellation_reason": None,
     },
     {
         "id": "ORD-1003",
@@ -53,8 +54,9 @@ INITIAL_ORDERS = [
         "tracking_number": "TRK987654125",
         "total_amount": 68.50,
         "status_description": "Package delivered at home.",
-        "shipping_address": "892 Nawa Shair, Multan."
-    }
+        "shipping_address": "892 Nawa Shahr, Multan.",
+        "cancellation_reason": None,
+    },
 ]
 
 async def seed_data():
