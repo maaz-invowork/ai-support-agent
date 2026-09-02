@@ -1,2 +1,12 @@
 uv run python -m uvicorn main:app --app-dir src --reload --port 8000
 uv run python src/seed.py
+
+# Docker Compose - Start all services (PostgreSQL, PgAdmin, Redis)
+docker-compose up -d
+
+# Docker Compose - Stop all services
+docker-compose down
+
+# Background Tasks (Celery Worker)
+# Make sure Redis is running first (via docker-compose)
+$env:PYTHONPATH="src"; uv run celery -A tasks worker --loglevel=info -P gevent -c 10

@@ -4,11 +4,15 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from sqlalchemy import select
 
 from core.config import settings
+from core.redis_cache import (
+    get_cached_docs,
+    get_cached_embeddings,
+    set_cached_docs,
+    set_cached_embeddings,
+)
 from db.database import AsyncSessionLocal
 from db.models import Policy
 
-_CACHED_DOCS = []
-_EMBEDDINGS_CACHE = None
 _embeddings_model = None
 
 
@@ -23,24 +27,28 @@ def _get_embeddings_model():
 
 
 async def _initialize_embeddings_from_db():
-    global _EMBEDDINGS_CACHE, _CACHED_DOCS
-
+    """Fetch policies from DB and cache docs + embeddings in Redis."""
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(Policy))
         policies = result.scalars().all()
 
         if not policies:
-            return False
+            return False, None, None
 
-        _CACHED_DOCS = [
+        docs = [
             {"title": p.title, "content": p.content} for p in policies
         ]
 
-        doc_texts = [f"{p['title']}: {p['content']}" for p in _CACHED_DOCS]
+        await set_cached_docs(docs, ttl=3600)
+
+        # Generate and cache embeddings in Redis
+        doc_texts = [f"{doc['title']}: {doc['content']}" for doc in docs]
         embeddings_model = _get_embeddings_model()
         doc_vectors = embeddings_model.embed_documents(doc_texts)
-        _EMBEDDINGS_CACHE = np.array(doc_vectors)
-        return True
+        embeddings_array = np.array(doc_vectors)
+        await set_cached_embeddings(embeddings_array, ttl=3600)
+
+        return True, docs, embeddings_array
 
 
 def _cosine_similarity(a, b):
@@ -57,22 +65,27 @@ async def lookup_policy(query: str) -> str:
         query: The search term or user question about store policies.
     """
     try:
-        if _EMBEDDINGS_CACHE is None or len(_CACHED_DOCS) == 0:
-            success = await _initialize_embeddings_from_db()
+        cached_docs = await get_cached_docs()
+        cached_embeddings = await get_cached_embeddings()
+
+        # If cache miss, initialize from database
+        if cached_docs is None or cached_embeddings is None:
+            success, docs, embeddings = await _initialize_embeddings_from_db()
             if not success:
                 return "No store policies found in the database."
+            cached_docs = docs
+            cached_embeddings = embeddings
 
         embeddings_model = _get_embeddings_model()
         query_vector = np.array(embeddings_model.embed_query(query))
 
-        similarities = _cosine_similarity(query_vector, _EMBEDDINGS_CACHE)
+        similarities = _cosine_similarity(query_vector, cached_embeddings)
         top_index = int(np.argmax(similarities))
 
-        matched_doc = _CACHED_DOCS[top_index]
+        matched_doc = cached_docs[top_index]
         return f"Policy: {matched_doc['title']}\nDetails: {matched_doc['content']}"
 
     except Exception as e:
-        # Fallback database keyword search
         async with AsyncSessionLocal() as session:
             result = await session.execute(select(Policy))
             policies = result.scalars().all()

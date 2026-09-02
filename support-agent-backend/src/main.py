@@ -18,7 +18,7 @@ from schemas import ChatRequest, ChatResponse, Token, UserCreate, UserLogin, Use
 from agent.graph import agent_graph, pool, checkpointer
 from core.security import create_access_token, decode_access_token, get_password_hash, verify_password
 from db.database import get_db, init_db
-from db.models import User
+from db.models import Conversation, Message, User
 from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
@@ -125,11 +125,69 @@ async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+@app.get("/api/messages", response_model=list)
+async def get_user_messages(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Message)
+        .join(Conversation)
+        .where(Conversation.user_id == current_user.id)
+        .order_by(Message.created_at.asc())
+    )
+    messages = result.scalars().all()
+    return [
+        {
+            "id": msg.id,
+            "role": msg.role,
+            "content": msg.content,
+            "created_at": msg.created_at
+        }
+        for msg in messages
+    ]
+
+
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
-    inputs = {"messages": [HumanMessage(content=request.message)]}
+async def chat_endpoint(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Conversation).where(
+            Conversation.user_id == current_user.id,
+            Conversation.thread_id == "default_session"
+        )
+    )
+    conversation = result.scalar_one_or_none()
     
-    config = {"configurable": {"thread_id": request.thread_id or "default_session"}}
+    if conversation is None:
+        # Create default conversation
+        conversation = Conversation(
+            user_id=current_user.id,
+            thread_id=f"user-{current_user.id}",
+            title="Chat History"
+        )
+        db.add(conversation)
+        await db.commit()
+        await db.refresh(conversation)
+    
+    # Save user message
+    user_message = Message(
+        conversation_id=conversation.id,
+        role="user",
+        content=request.message
+    )
+    db.add(user_message)
+    await db.commit()
+    
+    # Get AI response
+    inputs = {
+        "messages": [HumanMessage(content=request.message)],
+        "user_id": current_user.id,
+    }
+    config = {"configurable": {"thread_id": conversation.thread_id}}
     
     result = await agent_graph.ainvoke(inputs, config=config)
     
@@ -142,8 +200,17 @@ async def chat_endpoint(request: ChatRequest):
         )
     else:
         final_message = str(raw_content)
+    
+    # Save assistant message
+    assistant_message = Message(
+        conversation_id=conversation.id,
+        role="assistant",
+        content=final_message
+    )
+    db.add(assistant_message)
+    await db.commit()
 
     return ChatResponse(
         response=final_message,
-        thread_id=request.thread_id or "default_session"
+        thread_id=conversation.thread_id
     )

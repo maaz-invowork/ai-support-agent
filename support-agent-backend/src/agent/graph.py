@@ -4,11 +4,11 @@ from langgraph.graph import END, StateGraph, START
 from langgraph.prebuilt import ToolNode
 from psycopg_pool import AsyncConnectionPool
 from agent.tools.policy_rag import lookup_policy
-from agent.tools.order_tools import get_order_status, cancel_order
+from agent.tools.order_tools import get_my_orders, get_order_status, cancel_order
 from core.config import settings
 from schemas import AgentState
 
-tools = [lookup_policy, get_order_status, cancel_order]
+tools = [lookup_policy, get_my_orders, get_order_status, cancel_order]
 tool_node = ToolNode(tools)
 
 model = ChatGoogleGenerativeAI(

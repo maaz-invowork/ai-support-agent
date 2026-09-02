@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from uuid import uuid4
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -14,6 +15,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     orders = relationship("Order", back_populates="owner")
+    conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
 
 class Order(Base):
     __tablename__ = "orders"
@@ -38,3 +40,27 @@ class Policy(Base):
     title = Column(String(255), nullable=False)
     category = Column(String(100), nullable=False, index=True)
     content = Column(Text, nullable=False)
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    thread_id = Column(String, nullable=False, index=True, default=lambda: str(uuid4()))  # LangGraph thread ID
+    title = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="conversations")
+    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False, index=True)
+    role = Column(String, nullable=False)  # "user" or "assistant"
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+
+    conversation = relationship("Conversation", back_populates="messages")

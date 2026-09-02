@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
-
 class UserBase(BaseModel):
     email: EmailStr
 
@@ -33,6 +32,30 @@ class ChatResponse(BaseModel):
     response: str
     thread_id: str
 
+class MessageResponse(BaseModel):
+    id: int
+    conversation_id: int
+    role: str
+    content: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ConversationResponse(BaseModel):
+    id: int
+    user_id: int
+    thread_id: str
+    title: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    messages: List[MessageResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ConversationCreate(BaseModel):
+    thread_id: str = Field(..., description="LangGraph thread ID")
+    title: Optional[str] = Field(default=None, description="Conversation title")
+
 class OrderBase(BaseModel):
     item_name: str
     status: str = Field(..., description="Order status (e.g., Processing, Shipped, Delivered)")
@@ -59,3 +82,4 @@ class OrderRefundInput(BaseModel):
 
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
+    user_id: int
