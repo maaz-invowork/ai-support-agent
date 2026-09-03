@@ -40,7 +40,10 @@ async def init_agent():
     pool = AsyncConnectionPool(
         conninfo=settings.POSTGRES_CHECKPOINT_URL,
         max_size=10,
+        min_size=1,
+        timeout=30.0,
         open=False,
+        check=AsyncConnectionPool.check_connection,
         kwargs={"autocommit": True}
     )
     await pool.open()

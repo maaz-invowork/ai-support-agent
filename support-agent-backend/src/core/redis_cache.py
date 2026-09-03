@@ -11,8 +11,9 @@ _redis_client: Optional[redis.Redis] = None
 async def get_redis_client() -> redis.Redis:
     global _redis_client
     if _redis_client is None:
+        redis_url = settings.REDIS_URL or f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/2"
         _redis_client = redis.from_url(
-            f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/2",
+            redis_url,
             encoding="utf8",
             decode_responses=True
         )

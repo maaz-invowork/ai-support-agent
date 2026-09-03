@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     POSTGRES_CHECKPOINT_URL: str
     
     # Redis Configuration (for Celery)
+    REDIS_URL: str | None = None
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     

@@ -1,10 +1,12 @@
 from celery import Celery
 from core.config import settings
 
+redis_url = settings.REDIS_URL or f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}"
+
 celery_app = Celery(
     "support_agent",
-    broker=f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0",
-    backend=f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/1",
+    broker=redis_url,
+    backend=redis_url,
 )
 
 celery_app.conf.update(
