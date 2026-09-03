@@ -42,7 +42,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://ai-support-agent-swart-xi.vercel.app/",
+        "https://ai-support-agent-swart-xi.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],  # Allows GET, POST, OPTIONS, etc.
