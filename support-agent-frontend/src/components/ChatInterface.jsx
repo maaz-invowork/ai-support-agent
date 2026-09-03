@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import '../styles.css';
 import '../context/AuthContext';
 import { useAuth } from '../context/AuthContext';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const CONFIG = {
-  apiBaseUrl: "http://localhost:8000",
+  apiBaseUrl: API_BASE_URL,
   apiEndpoints: {
     health: "/api/health",
     chat: "/api/chat",
