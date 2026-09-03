@@ -36,13 +36,17 @@ workflow.add_edge(START, "agent")
 workflow.add_conditional_edges("agent", should_continue, ["tools", END])
 workflow.add_edge("tools", "agent")
 
-# Set up Async Connection Pool
-pool = AsyncConnectionPool(
-    conninfo=settings.POSTGRES_CHECKPOINT_URL,
-    max_size=10,
-    open=False,
-    kwargs={"autocommit": True}
-)
+async def init_agent():
+    pool = AsyncConnectionPool(
+        conninfo=settings.POSTGRES_CHECKPOINT_URL,
+        max_size=10,
+        open=False,
+        kwargs={"autocommit": True}
+    )
+    await pool.open()
 
-checkpointer = AsyncPostgresSaver(pool)
-agent_graph = workflow.compile(checkpointer=checkpointer)
+    checkpointer = AsyncPostgresSaver(pool)
+    await checkpointer.setup()
+
+    agent_graph = workflow.compile(checkpointer=checkpointer)
+    return agent_graph, pool, checkpointer

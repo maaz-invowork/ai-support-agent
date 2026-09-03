@@ -1,21 +1,20 @@
 from pathlib import Path
 from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
-dotenv_path = BASE_DIR / ".env"
+dotenv_path = BASE_DIR / ".env.local"  # User .env.local for local development
 
 # Explicitly load the .env file from the root folder
 load_dotenv(dotenv_path=dotenv_path)
 
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core.messages import HumanMessage
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from agent.graph import init_agent
 from schemas import ChatRequest, ChatResponse, Token, UserCreate, UserLogin, UserResponse
-from agent.graph import agent_graph, pool, checkpointer
 from core.security import create_access_token, decode_access_token, get_password_hash, verify_password
 from db.database import get_db, init_db
 from db.models import Conversation, Message, User
@@ -24,13 +23,17 @@ from fastapi.middleware.cors import CORSMiddleware
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
-    await pool.open()
-    await checkpointer.setup()
+
+    agent_graph, pool, checkpointer = await init_agent()
     
+    # Store references on app state for endpoint handlers
+    app.state.agent_graph = agent_graph
+    app.state.pool = pool
+    app.state.checkpointer = checkpointer
     yield
     
     # App Shutdown
-    await pool.close()
+    await app.state.pool.close()
 
 app = FastAPI(title="AI Customer Support Agent", lifespan=lifespan)
 
@@ -150,14 +153,17 @@ async def get_user_messages(
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(
-    request: ChatRequest,
+    chat_req: ChatRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    thread_id = f"user-{current_user.id}"
+    
     result = await db.execute(
         select(Conversation).where(
             Conversation.user_id == current_user.id,
-            Conversation.thread_id == "default_session"
+            Conversation.thread_id == thread_id
         )
     )
     conversation = result.scalar_one_or_none()
@@ -177,18 +183,19 @@ async def chat_endpoint(
     user_message = Message(
         conversation_id=conversation.id,
         role="user",
-        content=request.message
+        content=chat_req.message
     )
     db.add(user_message)
     await db.commit()
     
     # Get AI response
     inputs = {
-        "messages": [HumanMessage(content=request.message)],
+        "messages": [HumanMessage(content=chat_req.message)],
         "user_id": current_user.id,
     }
     config = {"configurable": {"thread_id": conversation.thread_id}}
     
+    agent_graph = request.app.state.agent_graph
     result = await agent_graph.ainvoke(inputs, config=config)
     
     raw_content = result["messages"][-1].content
